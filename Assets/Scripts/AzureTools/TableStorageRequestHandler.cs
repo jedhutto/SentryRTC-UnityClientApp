@@ -19,7 +19,7 @@ public class TableStorageRequestHandler : MonoBehaviour
 
     void GetAzureConfiguration()
     {
-        string path = "Assets/Resources/azure_configuration.txt";
+        string path = "Assets/Resources/azure_configuration.userprefs";
         StreamReader reader = new StreamReader(path);
         accountName = reader.ReadLine();
         storageAccountKey = reader.ReadLine();
