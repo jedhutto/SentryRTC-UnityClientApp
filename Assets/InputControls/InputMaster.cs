@@ -53,6 +53,15 @@ public partial class @InputMaster : IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""CameraLook"",
+                    ""type"": ""PassThrough"",
+                    ""id"": ""a919ac9c-08c2-4694-b153-329039519dfa"",
+                    ""expectedControlType"": ""Vector2"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
                 }
             ],
             ""bindings"": [
@@ -143,8 +152,69 @@ public partial class @InputMaster : IInputActionCollection2, IDisposable
                     ""action"": ""HangUp"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""2D Vector"",
+                    ""id"": ""b89fe766-3c1d-4829-bd47-3b6c9ef30f01"",
+                    ""path"": ""2DVector(mode=2)"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CameraLook"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""up"",
+                    ""id"": ""baee4324-8ccd-4892-9fab-9f2505177c99"",
+                    ""path"": ""<Gamepad>/rightStick/up"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CameraLook"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""down"",
+                    ""id"": ""51318174-911b-4c42-a500-c90d9e18fe93"",
+                    ""path"": ""<Gamepad>/rightStick/down"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CameraLook"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""left"",
+                    ""id"": ""03acd1ed-9e47-4fc7-a7df-d4a977da098e"",
+                    ""path"": ""<Gamepad>/rightStick/left"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CameraLook"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""right"",
+                    ""id"": ""3c9566ef-c57e-4e64-97b5-a1f999282dd7"",
+                    ""path"": ""<Gamepad>/rightStick/right"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CameraLook"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
                 }
             ]
+        },
+        {
+            ""name"": ""CameraLook"",
+            ""id"": ""9f8cf958-6e3e-40f0-94b5-c981d936b18f"",
+            ""actions"": [],
+            ""bindings"": []
         }
     ],
     ""controlSchemes"": [
@@ -166,6 +236,9 @@ public partial class @InputMaster : IInputActionCollection2, IDisposable
         m_Tracks_Movement = m_Tracks.FindAction("Movement", throwIfNotFound: true);
         m_Tracks_Call = m_Tracks.FindAction("Call", throwIfNotFound: true);
         m_Tracks_HangUp = m_Tracks.FindAction("HangUp", throwIfNotFound: true);
+        m_Tracks_CameraLook = m_Tracks.FindAction("CameraLook", throwIfNotFound: true);
+        // CameraLook
+        m_CameraLook = asset.FindActionMap("CameraLook", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -228,6 +301,7 @@ public partial class @InputMaster : IInputActionCollection2, IDisposable
     private readonly InputAction m_Tracks_Movement;
     private readonly InputAction m_Tracks_Call;
     private readonly InputAction m_Tracks_HangUp;
+    private readonly InputAction m_Tracks_CameraLook;
     public struct TracksActions
     {
         private @InputMaster m_Wrapper;
@@ -235,6 +309,7 @@ public partial class @InputMaster : IInputActionCollection2, IDisposable
         public InputAction @Movement => m_Wrapper.m_Tracks_Movement;
         public InputAction @Call => m_Wrapper.m_Tracks_Call;
         public InputAction @HangUp => m_Wrapper.m_Tracks_HangUp;
+        public InputAction @CameraLook => m_Wrapper.m_Tracks_CameraLook;
         public InputActionMap Get() { return m_Wrapper.m_Tracks; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -253,6 +328,9 @@ public partial class @InputMaster : IInputActionCollection2, IDisposable
                 @HangUp.started -= m_Wrapper.m_TracksActionsCallbackInterface.OnHangUp;
                 @HangUp.performed -= m_Wrapper.m_TracksActionsCallbackInterface.OnHangUp;
                 @HangUp.canceled -= m_Wrapper.m_TracksActionsCallbackInterface.OnHangUp;
+                @CameraLook.started -= m_Wrapper.m_TracksActionsCallbackInterface.OnCameraLook;
+                @CameraLook.performed -= m_Wrapper.m_TracksActionsCallbackInterface.OnCameraLook;
+                @CameraLook.canceled -= m_Wrapper.m_TracksActionsCallbackInterface.OnCameraLook;
             }
             m_Wrapper.m_TracksActionsCallbackInterface = instance;
             if (instance != null)
@@ -266,10 +344,38 @@ public partial class @InputMaster : IInputActionCollection2, IDisposable
                 @HangUp.started += instance.OnHangUp;
                 @HangUp.performed += instance.OnHangUp;
                 @HangUp.canceled += instance.OnHangUp;
+                @CameraLook.started += instance.OnCameraLook;
+                @CameraLook.performed += instance.OnCameraLook;
+                @CameraLook.canceled += instance.OnCameraLook;
             }
         }
     }
     public TracksActions @Tracks => new TracksActions(this);
+
+    // CameraLook
+    private readonly InputActionMap m_CameraLook;
+    private ICameraLookActions m_CameraLookActionsCallbackInterface;
+    public struct CameraLookActions
+    {
+        private @InputMaster m_Wrapper;
+        public CameraLookActions(@InputMaster wrapper) { m_Wrapper = wrapper; }
+        public InputActionMap Get() { return m_Wrapper.m_CameraLook; }
+        public void Enable() { Get().Enable(); }
+        public void Disable() { Get().Disable(); }
+        public bool enabled => Get().enabled;
+        public static implicit operator InputActionMap(CameraLookActions set) { return set.Get(); }
+        public void SetCallbacks(ICameraLookActions instance)
+        {
+            if (m_Wrapper.m_CameraLookActionsCallbackInterface != null)
+            {
+            }
+            m_Wrapper.m_CameraLookActionsCallbackInterface = instance;
+            if (instance != null)
+            {
+            }
+        }
+    }
+    public CameraLookActions @CameraLook => new CameraLookActions(this);
     private int m_XboxControlSchemeSchemeIndex = -1;
     public InputControlScheme XboxControlSchemeScheme
     {
@@ -284,5 +390,9 @@ public partial class @InputMaster : IInputActionCollection2, IDisposable
         void OnMovement(InputAction.CallbackContext context);
         void OnCall(InputAction.CallbackContext context);
         void OnHangUp(InputAction.CallbackContext context);
+        void OnCameraLook(InputAction.CallbackContext context);
+    }
+    public interface ICameraLookActions
+    {
     }
 }

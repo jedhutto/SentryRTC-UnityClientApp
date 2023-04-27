@@ -22,30 +22,57 @@ public class InputHandler : MonoBehaviour
     public RTCDataChannel RTCDataChannel;
     public bool connected = false;
     private InputAction movement;
+    private InputAction cameraLook;
     private short negativeAdjustment = 127;
+    private float lastPulseWidthX = -2;
+    private short lastLeftTrack = -1;
+    private short lastRightTrack = -1;
+    private short lastDriveMessage = 0;
 
     void Start()
     {
         movement = input.FindAction("Movement");
-        InvokeRepeating("ReadInput", 0, 1.0f/60.0f);
+        cameraLook = input.FindAction("CameraLook");
+        InvokeRepeating("ReadDriveInput", 0, 1.0f/60.0f);
+        InvokeRepeating("ReadCameraLookInput", 0, 1.0f/60.0f);
     }
 
-    private void ReadInput()
+    private void ReadCameraLookInput()
+    {
+        var vector = cameraLook.ReadValue<UnityEngine.Vector2>();
+        var pulseWidthX = 500 + (2000 - ((vector.x + 1) * 1000));
+        leftTrackText.text = ((short)pulseWidthX).ToString();
+        if (connected && pulseWidthX != lastPulseWidthX)
+        {
+            lastPulseWidthX = pulseWidthX;
+            var cameraLookSignal = new ServoSignal((short)(pulseWidthX), (short)(0));
+            RTCDataChannel.Send(cameraLookSignal.GetBytes());
+        }
+    }
+
+    private void ReadDriveInput()
     {
         var vector = movement.ReadValue<UnityEngine.Vector2>();
         var radian = Mathf.Atan2(vector.x, vector.y);
         var magnitudeFactor = Mathf.Max( Mathf.Abs(vector.x), Mathf.Abs(vector.y));
-        if((short)(CalculateDriveValue(radian) * magnitudeFactor * 127) > 0)
-            leftTrackText.text = ((short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127)).ToString();
-        if ((short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127) > 0)
-            rightTrackText.text = ((short)(CalculateDriveValue(radian) * magnitudeFactor * 127)).ToString();
+        //if((short)(CalculateDriveValue(radian) * magnitudeFactor * 127) > 0)
+        //    leftTrackText.text = ((short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127)).ToString();
+        //if ((short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127) > 0)
+        //    rightTrackText.text = ((short)(CalculateDriveValue(radian) * magnitudeFactor * 127)).ToString();
         leftTrack = (short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127);
         rightTrack = (short)(CalculateDriveValue(radian) * magnitudeFactor * 127);
 
-        if (connected)
+        if (connected && (leftTrack != lastLeftTrack || rightTrack != lastRightTrack || lastDriveMessage > 30))
         {
+            lastDriveMessage = 0;
+            lastLeftTrack = leftTrack;
+            lastRightTrack = rightTrack;
             var movementSignal = new MovementSignal((short)(leftTrack + negativeAdjustment), (short)(rightTrack + negativeAdjustment));
             RTCDataChannel.Send(movementSignal.GetBytes());
+        }
+        else
+        {
+            lastDriveMessage++;
         }
     }
 
