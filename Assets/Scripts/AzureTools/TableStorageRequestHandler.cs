@@ -27,7 +27,7 @@ public class TableStorageRequestHandler : MonoBehaviour
         reader.Close();
     }
 
-    public IEnumerable<(TableEntry, int)> sendRequest(Verb verb, TableEntry entry = null)
+    public IEnumerable<(TableEntry, int)> SendRequest(Verb verb, TableEntry entry = null)
     {
         UnityWebRequest request;
         string uriParams = "";
@@ -51,7 +51,7 @@ public class TableStorageRequestHandler : MonoBehaviour
                 request = UnityWebRequest.Delete(uri);
                 break;
             case Verb.POST:
-                request = UnityWebRequest.Post(uri, body);
+                request = UnityWebRequest.PostWwwForm(uri, body);
                 break;
             case Verb.PUT:
                 request = UnityWebRequest.Put(uri, body);

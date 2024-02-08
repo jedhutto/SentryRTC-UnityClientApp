@@ -16,10 +16,11 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 public class WebRTC_Broker : MonoBehaviour
 {
-    #pragma warning disable 0649
+#pragma warning disable 0649
+    [SerializeField] public TMP_Text debug;
     [SerializeField] private Button callButton;
     [SerializeField] private Button disconnectButton;
-    [SerializeField] private Button sendButton;
+    //[SerializeField] private Button sendButton;
     [SerializeField] private TextMeshProUGUI textSend;
     [SerializeField] private RawImage frame;
     [SerializeField] public TMP_InputField textReceive;
@@ -49,12 +50,12 @@ public class WebRTC_Broker : MonoBehaviour
         WebRTC.Initialize();
         callButton.onClick.AddListener(() => { StartCoroutine(Call()); });
         //sendButton.onClick.AddListener(() => { dataChannel.Send(textSend.text); });
-        message = new MovementSignal(127,127);
-        sendButton.onClick.AddListener(() => 
-        {
-            //var temp = BitConverter.GetBytes(message.id);
-            dataChannel.Send(message.GetBytes()) ; 
-        });
+        //message = new MovementSignal(127,127);
+        //sendButton.onClick.AddListener(() => 
+        //{
+        //    //var temp = BitConverter.GetBytes(message.id);
+        //    dataChannel.Send(message.GetBytes()) ; 
+        //});
         //disconnectButton.onClick.AddListener(() => { Hangup(); });
     }
 
@@ -104,16 +105,15 @@ public class WebRTC_Broker : MonoBehaviour
         };
         onDataChannelOpen = () =>
         {
-            sendButton.interactable = true;
+            //sendButton.interactable = true;
             disconnectButton.interactable = true;
-
             inputHandler.RTCDataChannel = dataChannel;
-            inputHandler.connected= true;
-
+            inputHandler.connected = true;
+            inputHandler.Setup();
         };
         onDataChannelClose = () =>
         {
-            sendButton.interactable = false;
+            //sendButton.interactable = false;
             callButton.interactable = true;
             disconnectButton.interactable = false;
 
@@ -151,7 +151,12 @@ public class WebRTC_Broker : MonoBehaviour
             Debug.Log(trackEvent);
             if (trackEvent.Track.Kind == TrackKind.Video)
             {
-                var codecs = RTCRtpSender.GetCapabilities(TrackKind.Video).codecs;
+                var codecs = RTCRtpReceiver.GetCapabilities(TrackKind.Video).codecs;
+                debug.text = "";
+                foreach (var codec in codecs)
+                {
+                    debug.text += codec.mimeType + '\n';
+                }
                 var h264Codecs = codecs.Where(codec => codec.mimeType == "video/H264");
                 var error = trackEvent.Transceiver.SetCodecPreferences(h264Codecs.ToArray());
                 
@@ -184,7 +189,7 @@ public class WebRTC_Broker : MonoBehaviour
         var op = caller.SetLocalDescription(ref desc);
         yield return op;
 
-        CoroutineWithData cd = new CoroutineWithData(this, tableStorageRequestHandler.sendRequest(TableStorageRequestHandler.Verb.PUT, new TableEntry("caller", desc.sdp, "", "calling")).GetEnumerator());
+        CoroutineWithData cd = new CoroutineWithData(this, tableStorageRequestHandler.SendRequest(TableStorageRequestHandler.Verb.PUT, new TableEntry("caller", desc.sdp, "", "calling")).GetEnumerator());
         yield return cd.coroutine;
         (TableEntry, int) putResponse = ((TableEntry, int))cd.result;
 
@@ -193,13 +198,13 @@ public class WebRTC_Broker : MonoBehaviour
             bool waitingForResponse = true;
             while (waitingForResponse)
             {
-                cd = new CoroutineWithData(this, tableStorageRequestHandler.sendRequest(TableStorageRequestHandler.Verb.GET, new TableEntry("answerer")).GetEnumerator());
+                cd = new CoroutineWithData(this, tableStorageRequestHandler.SendRequest(TableStorageRequestHandler.Verb.GET, new TableEntry("answerer")).GetEnumerator());
                 yield return cd.coroutine;
                 (TableEntry, int) getResponse = ((TableEntry, int))cd.result;
                 if (getResponse.Item2 != 404 && getResponse.Item1?.status == "answering")
                 {
                     //change state in table storage
-                    cd = new CoroutineWithData(this, tableStorageRequestHandler.sendRequest(TableStorageRequestHandler.Verb.PUT, new TableEntry("caller", desc.sdp, candidateList, "connected")).GetEnumerator());
+                    cd = new CoroutineWithData(this, tableStorageRequestHandler.SendRequest(TableStorageRequestHandler.Verb.PUT, new TableEntry("caller", desc.sdp, candidateList, "connected")).GetEnumerator());
                     yield return cd.coroutine;
                     putResponse = ((TableEntry, int))cd.result;
 
@@ -315,7 +320,7 @@ public class WebRTC_Broker : MonoBehaviour
             candidateResponse.candidate = candidateList;
             candidateResponse.description = testDesc.sdp;
             candidateResponse.status = "calling";
-            yield return cd = new CoroutineWithData(this, tableStorageRequestHandler.sendRequest(TableStorageRequestHandler.Verb.PUT, candidateResponse).GetEnumerator());
+            yield return cd = new CoroutineWithData(this, tableStorageRequestHandler.SendRequest(TableStorageRequestHandler.Verb.PUT, candidateResponse).GetEnumerator());
             yield return cd.coroutine;
             (TableEntry, int) putResponse = ((TableEntry, int))cd.result;
         }

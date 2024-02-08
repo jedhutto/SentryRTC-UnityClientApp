@@ -7,7 +7,7 @@
             "actions": [
                 {
                     "name": "Movement",
-                    "type": "PassThrough",
+                    "type": "Value",
                     "id": "fad97973-988e-44d1-882f-89f845b3a49a",
                     "expectedControlType": "Vector2",
                     "processors": "",
@@ -34,7 +34,7 @@
                 },
                 {
                     "name": "CameraLook",
-                    "type": "PassThrough",
+                    "type": "Value",
                     "id": "a919ac9c-08c2-4694-b153-329039519dfa",
                     "expectedControlType": "Vector2",
                     "processors": "",
@@ -43,72 +43,6 @@
                 }
             ],
             "bindings": [
-                {
-                    "name": "",
-                    "id": "1de658ef-ea61-4ea9-943e-03679584889a",
-                    "path": "",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Movement",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "2D Vector",
-                    "id": "672a07e3-7d37-4c53-925e-9ca5071616d7",
-                    "path": "2DVector(mode=2)",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Movement",
-                    "isComposite": true,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "Up",
-                    "id": "bf8d97b8-278c-4f2e-b3aa-457720d6284d",
-                    "path": "<Gamepad>/leftStick/up",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Xbox Control Scheme",
-                    "action": "Movement",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "Down",
-                    "id": "feb3dd22-198f-434a-a982-ada4b857a5a2",
-                    "path": "<Gamepad>/leftStick/down",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Xbox Control Scheme",
-                    "action": "Movement",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "Left",
-                    "id": "8f0d4c6f-2dd3-4169-b5e7-7b534d11dd44",
-                    "path": "<Gamepad>/leftStick/left",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Xbox Control Scheme",
-                    "action": "Movement",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "Right",
-                    "id": "aaa97ebb-c15d-4f08-a21d-67a2cefc0049",
-                    "path": "<Gamepad>/leftStick/right",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "Xbox Control Scheme",
-                    "action": "Movement",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
                 {
                     "name": "",
                     "id": "c88a8371-669f-44c0-a4fc-6302cbf88395",
@@ -132,59 +66,26 @@
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "2D Vector",
-                    "id": "b89fe766-3c1d-4829-bd47-3b6c9ef30f01",
-                    "path": "2DVector(mode=2)",
+                    "name": "",
+                    "id": "cd6b2f33-b7a5-43b3-8e3c-67bfea927625",
+                    "path": "<Gamepad>/leftStick",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
-                    "action": "CameraLook",
-                    "isComposite": true,
+                    "groups": "Xbox Control Scheme",
+                    "action": "Movement",
+                    "isComposite": false,
                     "isPartOfComposite": false
                 },
                 {
-                    "name": "up",
-                    "id": "baee4324-8ccd-4892-9fab-9f2505177c99",
-                    "path": "<Gamepad>/rightStick/up",
+                    "name": "",
+                    "id": "e358e985-892c-4dc7-b813-afe9de42a938",
+                    "path": "<Gamepad>/rightStick",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": "Xbox Control Scheme",
                     "action": "CameraLook",
                     "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "down",
-                    "id": "51318174-911b-4c42-a500-c90d9e18fe93",
-                    "path": "<Gamepad>/rightStick/down",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "CameraLook",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "left",
-                    "id": "03acd1ed-9e47-4fc7-a7df-d4a977da098e",
-                    "path": "<Gamepad>/rightStick/left",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "CameraLook",
-                    "isComposite": false,
-                    "isPartOfComposite": true
-                },
-                {
-                    "name": "right",
-                    "id": "3c9566ef-c57e-4e64-97b5-a1f999282dd7",
-                    "path": "<Gamepad>/rightStick/right",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "CameraLook",
-                    "isComposite": false,
-                    "isPartOfComposite": true
+                    "isPartOfComposite": false
                 }
             ]
         },
