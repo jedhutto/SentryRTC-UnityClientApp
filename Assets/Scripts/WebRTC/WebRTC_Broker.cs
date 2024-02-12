@@ -13,6 +13,20 @@ using System.Net;
 using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Drawing;
+using static UnityEngine.EventSystems.EventTrigger;
+
+public struct LidarDataCoordinate
+{
+    float x;
+    float y;
+    bool isEnd;
+}
+
+public class LidarDataSignal : Signal
+{
+    public LidarDataCoordinate[] LidarData = new LidarDataCoordinate[8192];
+}
 
 public class WebRTC_Broker : MonoBehaviour
 {
@@ -26,6 +40,8 @@ public class WebRTC_Broker : MonoBehaviour
     [SerializeField] public TMP_InputField textReceive;
     [SerializeField] public Text text;
     [SerializeField] public InputHandler inputHandler;
+    public RawImage graph;
+    public Texture2D graphTexture;
 #pragma warning restore 0649
 
     private RTCPeerConnection caller;
@@ -101,7 +117,82 @@ public class WebRTC_Broker : MonoBehaviour
 
         onDataChannelMessage = bytes => 
         {
-            textReceive.text = System.Text.Encoding.UTF8.GetString(bytes);
+            //move all this logic to LidarHandler.cs and use 
+            var baseColor = new UnityEngine.Color(32, 32, 32, 0.6f);
+            if (graphTexture == null){
+                graphTexture = new Texture2D(100, 100);
+                for(int i = 0; i < graphTexture.width; i++)
+                {
+                    for(int j = 0; j < graphTexture.height; j++)
+                    {
+                        graphTexture.SetPixel(i, j, baseColor);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < graphTexture.width; i++)
+                {
+                    for (int j = 0; j < graphTexture.height; j++)
+                    {
+                        graphTexture.SetPixel(i, j, baseColor);
+                    }
+                }
+            }
+            var SignalType = BitConverter.ToUInt16(bytes, 0);
+            var count = 0;
+            float centerX = graphTexture.width / 2;
+            float centerY = graphTexture.height / 2;
+           
+            //Move this block to a new texture which will be placed behind the transparent lidar texture
+            //This way we won't have to redraw the tank every frame, and it will allow us to
+            //rotate the lidar data to match the tank's camera angle while keeping the tank in the same position
+            DrawPoint((int)centerX + 2, (int)centerY + 3, UnityEngine.Color.red);
+            DrawPoint((int)centerX + 1, (int)centerY + 3, UnityEngine.Color.red);
+            DrawPoint((int)centerX + 0, (int)centerY + 2, UnityEngine.Color.red);
+            DrawPoint((int)centerX - 1, (int)centerY + 3, UnityEngine.Color.red);
+            DrawPoint((int)centerX - 2, (int)centerY + 3, UnityEngine.Color.red);
+
+            DrawPoint((int)centerX + 2, (int)centerY + 2, UnityEngine.Color.red);
+            DrawPoint((int)centerX + 2, (int)centerY + 1, UnityEngine.Color.red);
+            DrawPoint((int)centerX + 1, (int)centerY + 0, UnityEngine.Color.red);
+            DrawPoint((int)centerX + 2, (int)centerY - 1, UnityEngine.Color.red);
+            DrawPoint((int)centerX + 2, (int)centerY - 2, UnityEngine.Color.red);
+
+            DrawPoint((int)centerX - 2, (int)centerY + 2, UnityEngine.Color.red);
+            DrawPoint((int)centerX - 2, (int)centerY + 1, UnityEngine.Color.red);
+            DrawPoint((int)centerX - 1, (int)centerY + 0, UnityEngine.Color.red);
+            DrawPoint((int)centerX - 2, (int)centerY - 1, UnityEngine.Color.red);
+            DrawPoint((int)centerX - 2, (int)centerY - 2, UnityEngine.Color.red);
+
+            DrawPoint((int)centerX + 2, (int)centerY - 3, UnityEngine.Color.red);
+            DrawPoint((int)centerX + 1, (int)centerY - 3, UnityEngine.Color.red);
+            DrawPoint((int)centerX + 0, (int)centerY - 2, UnityEngine.Color.red);
+            DrawPoint((int)centerX - 1, (int)centerY - 3, UnityEngine.Color.red);
+            DrawPoint((int)centerX - 2, (int)centerY - 3, UnityEngine.Color.red);
+
+            for (int i = 4; i < bytes.Length; i+=4)
+            {
+                count++;
+
+                var x = BitConverter.ToSingle(bytes, i);
+                i += 4;
+                var y = BitConverter.ToSingle(bytes, i);
+                i += 4;
+                var end = BitConverter.ToBoolean(bytes, i);
+
+                float pixelX = (centerX + x * .005f) ;
+                float pixelY = (centerY + y * .005f) ;
+                DrawPoint((int)pixelX, (int)pixelY, UnityEngine.Color.green);
+
+                if (end)
+                {                     
+                    break;
+                }
+            }
+        
+            graphTexture.Apply();
+            graph.texture = graphTexture;
         };
         onDataChannelOpen = () =>
         {
@@ -120,6 +211,14 @@ public class WebRTC_Broker : MonoBehaviour
             inputHandler.connected = false;
             inputHandler.RTCDataChannel = null;
         };
+    }
+
+    void DrawPoint(int x, int y, UnityEngine.Color color)
+    {
+        if(x < 0 || x > 100 || y < 0 || y > 100)
+            return;
+
+        graphTexture.SetPixel(x, y, color);
     }
 
     void onMessage()
