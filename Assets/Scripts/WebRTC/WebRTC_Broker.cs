@@ -15,18 +15,20 @@ using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Drawing;
 using static UnityEngine.EventSystems.EventTrigger;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 
-public struct LidarDataCoordinate
-{
-    float x;
-    float y;
-    bool isEnd;
-}
+//public struct LidarDataCoordinate
+//{
+//    float x;
+//    float y;
+//    bool isEnd;
+//}
 
-public class LidarDataSignal : Signal
-{
-    public LidarDataCoordinate[] LidarData = new LidarDataCoordinate[8192];
-}
+//public class LidarDataSignal : Signal
+//{
+//    public LidarDataCoordinate[] LidarData = new LidarDataCoordinate[8192];
+//}
 
 public class WebRTC_Broker : MonoBehaviour
 {
@@ -41,7 +43,11 @@ public class WebRTC_Broker : MonoBehaviour
     [SerializeField] public Text text;
     [SerializeField] public InputHandler inputHandler;
     public RawImage graph;
+    public RawImage graphBackground;
+    public Texture2D graphBackgroundTexture;
+    public Texture2D graphTextureTemplate;
     public Texture2D graphTexture;
+    public float rotationSpeed = 200.0f;
 #pragma warning restore 0649
 
     private RTCPeerConnection caller;
@@ -85,6 +91,14 @@ public class WebRTC_Broker : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        //need to rotate the lidar data to match the tank's camera angle
+        //graph.transform.rotation = Quaternion.Euler(0, 0, inputHandler.lookAngle * 90) ;
+        //graph.transform.rotation = Quaternion.Euler(0, 0, inputHandler.lookAngle * 90) ;
+        graph.transform.rotation = Quaternion.RotateTowards(graph.transform.rotation, Quaternion.Euler(0, 0, inputHandler.lookAngle * 90), rotationSpeed * Time.deltaTime);
+    }
+
     private void Start()
     {
         receiveVideoStream = new MediaStream();
@@ -117,59 +131,65 @@ public class WebRTC_Broker : MonoBehaviour
 
         onDataChannelMessage = bytes => 
         {
+            //NativeArray<byte> nativeArray = new NativeArray<byte>(bytes, Allocator.Temp);
+            //NativeArray<LidarDataSignal> floats = nativeArray.Reinterpret<LidarDataSignal>(UnsafeUtility.SizeOf<LidarDataSignal>());
+
             //move all this logic to LidarHandler.cs and use 
-            var baseColor = new UnityEngine.Color(32, 32, 32, 0.6f);
-            if (graphTexture == null){
-                graphTexture = new Texture2D(100, 100);
-                for(int i = 0; i < graphTexture.width; i++)
+            var baseColor = new UnityEngine.Color(0, 0, 0, 0.0f);
+            if (graphTextureTemplate == null){
+                graphTextureTemplate = new Texture2D(100, 100);
+                for(int i = 0; i < graphTextureTemplate.width; i++)
                 {
-                    for(int j = 0; j < graphTexture.height; j++)
+                    for(int j = 0; j < graphTextureTemplate.height; j++)
                     {
-                        graphTexture.SetPixel(i, j, baseColor);
+                        graphTextureTemplate.SetPixel(i, j, baseColor);
                     }
                 }
+                //Move this block to a new texture which will be placed behind the transparent lidar texture
+                //This way we won't have to redraw the tank every frame, and it will allow us to
+                //rotate the lidar data to match the tank's camera angle while keeping the tank in the same position
+                graphTexture = new Texture2D(graphTextureTemplate.width, graphTextureTemplate.height);
+                graphBackgroundTexture = new Texture2D(graphTextureTemplate.width, graphTextureTemplate.height);
+                float centerX = graphBackgroundTexture.width / 2;
+                float centerY = graphBackgroundTexture.height / 2;
+                DrawPoint((int)centerX + 2, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 1, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 0, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 1, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
+
+                DrawPoint((int)centerX + 2, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 2, (int)centerY + 1, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 1, (int)centerY + 0, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 2, (int)centerY - 1, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 2, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
+
+                DrawPoint((int)centerX - 2, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY + 1, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 1, (int)centerY + 0, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY - 1, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
+
+                DrawPoint((int)centerX + 2, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 1, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 0, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 1, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
+
+                graphTexture.SetPixels(graphTextureTemplate.GetPixels());
+
+                graphBackgroundTexture.Apply();
+                graphBackground.texture = graphBackgroundTexture;
             }
             else
             {
-                for (int i = 0; i < graphTexture.width; i++)
-                {
-                    for (int j = 0; j < graphTexture.height; j++)
-                    {
-                        graphTexture.SetPixel(i, j, baseColor);
-                    }
-                }
+                graphTexture.SetPixels(graphTextureTemplate.GetPixels());
             }
             var SignalType = BitConverter.ToUInt16(bytes, 0);
             var count = 0;
-            float centerX = graphTexture.width / 2;
-            float centerY = graphTexture.height / 2;
+            
            
-            //Move this block to a new texture which will be placed behind the transparent lidar texture
-            //This way we won't have to redraw the tank every frame, and it will allow us to
-            //rotate the lidar data to match the tank's camera angle while keeping the tank in the same position
-            DrawPoint((int)centerX + 2, (int)centerY + 3, UnityEngine.Color.red);
-            DrawPoint((int)centerX + 1, (int)centerY + 3, UnityEngine.Color.red);
-            DrawPoint((int)centerX + 0, (int)centerY + 2, UnityEngine.Color.red);
-            DrawPoint((int)centerX - 1, (int)centerY + 3, UnityEngine.Color.red);
-            DrawPoint((int)centerX - 2, (int)centerY + 3, UnityEngine.Color.red);
 
-            DrawPoint((int)centerX + 2, (int)centerY + 2, UnityEngine.Color.red);
-            DrawPoint((int)centerX + 2, (int)centerY + 1, UnityEngine.Color.red);
-            DrawPoint((int)centerX + 1, (int)centerY + 0, UnityEngine.Color.red);
-            DrawPoint((int)centerX + 2, (int)centerY - 1, UnityEngine.Color.red);
-            DrawPoint((int)centerX + 2, (int)centerY - 2, UnityEngine.Color.red);
-
-            DrawPoint((int)centerX - 2, (int)centerY + 2, UnityEngine.Color.red);
-            DrawPoint((int)centerX - 2, (int)centerY + 1, UnityEngine.Color.red);
-            DrawPoint((int)centerX - 1, (int)centerY + 0, UnityEngine.Color.red);
-            DrawPoint((int)centerX - 2, (int)centerY - 1, UnityEngine.Color.red);
-            DrawPoint((int)centerX - 2, (int)centerY - 2, UnityEngine.Color.red);
-
-            DrawPoint((int)centerX + 2, (int)centerY - 3, UnityEngine.Color.red);
-            DrawPoint((int)centerX + 1, (int)centerY - 3, UnityEngine.Color.red);
-            DrawPoint((int)centerX + 0, (int)centerY - 2, UnityEngine.Color.red);
-            DrawPoint((int)centerX - 1, (int)centerY - 3, UnityEngine.Color.red);
-            DrawPoint((int)centerX - 2, (int)centerY - 3, UnityEngine.Color.red);
 
             for (int i = 4; i < bytes.Length; i+=4)
             {
@@ -181,9 +201,9 @@ public class WebRTC_Broker : MonoBehaviour
                 i += 4;
                 var end = BitConverter.ToBoolean(bytes, i);
 
-                float pixelX = (centerX + x * .005f) ;
-                float pixelY = (centerY + y * .005f) ;
-                DrawPoint((int)pixelX, (int)pixelY, UnityEngine.Color.green);
+                float pixelX = ((graphTexture.width / 2) + x * .005f) ;
+                float pixelY = ((graphTexture.height / 2) + y * .005f) ;
+                DrawPoint((int)pixelX, (int)pixelY, UnityEngine.Color.green, graphTexture);
 
                 if (end)
                 {                     
@@ -213,12 +233,12 @@ public class WebRTC_Broker : MonoBehaviour
         };
     }
 
-    void DrawPoint(int x, int y, UnityEngine.Color color)
+    void DrawPoint(int x, int y, UnityEngine.Color color, Texture2D texture)
     {
         if(x < 0 || x > 100 || y < 0 || y > 100)
             return;
 
-        graphTexture.SetPixel(x, y, color);
+        texture.SetPixel(x, y, color);
     }
 
     void onMessage()

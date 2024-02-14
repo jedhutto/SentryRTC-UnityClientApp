@@ -22,6 +22,7 @@ public class InputHandler : MonoBehaviour
     public short rightTrack;
     public RTCDataChannel RTCDataChannel;
     public bool connected = false;
+    public float lookAngle = 0;
     //private InputAction movement;
     //private InputAction cameraLook;
     private short negativeAdjustment = 127;
@@ -109,6 +110,8 @@ public class InputHandler : MonoBehaviour
         leftTrackText.text = ((short)pulseWidthX).ToString();
         if (connected && pulseWidthX != lastPulseWidthX)
         {
+            lookAngle = vector.x;
+            Debug.Log("Look Angle: " + lookAngle);
             lastPulseWidthX = pulseWidthX;
             var cameraLookSignal = new ServoSignal((short)(pulseWidthX), (short)(0));
             RTCDataChannel.Send(cameraLookSignal.GetBytes());
