@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,31 +22,126 @@ public class InputHandler : MonoBehaviour
     public short rightTrack;
     public RTCDataChannel RTCDataChannel;
     public bool connected = false;
-    private InputAction movement;
+    public float lookAngle = 0;
+    //private InputAction movement;
+    //private InputAction cameraLook;
     private short negativeAdjustment = 127;
+    private float lastPulseWidthX = -2;
+    private short lastLeftTrack = -1;
+    private short lastRightTrack = -1;
+    private short lastDriveMessage = 0;
 
+    InputAction movementAction;
+    InputAction lookAction;
+    InputActionMap inputMap;
+
+    static readonly string KB = "Keyboard And Mouse";
+    Dictionary<InputAction, Action<InputAction.CallbackContext>> setupActionHandlers = new Dictionary<InputAction, Action<InputAction.CallbackContext>>();
+    Dictionary<string, string> actingBindings = new Dictionary<string, string>();
+
+    public InputActionAsset GetActions() => input;
+    bool setupComplete = false;
     void Start()
     {
-        movement = input.FindAction("Movement");
-        InvokeRepeating("ReadInput", 0, 1.0f/60.0f);
+        
+
+        //InvokeRepeating("ReadDriveInput", 0, 1.0f/60.0f);
+        //InvokeRepeating("ReadCameraLookInput", 0, 1.0f/60.0f);
     }
 
-    private void ReadInput()
+    void Update()
     {
-        var vector = movement.ReadValue<UnityEngine.Vector2>();
+        if (setupComplete)
+        {
+            ReadDriveInput();
+            ReadCameraLookInput();
+        }
+    }
+
+    void OnDestroy()
+    {
+        //we must unregister handlers or DARKNESS CONSUMES US ALL
+        foreach (var action in setupActionHandlers.Keys)
+        {
+            Action<InputAction.CallbackContext> handler = setupActionHandlers[action];
+            action.started -= handler;
+            action.performed -= handler;
+            action.canceled -= handler;
+        }
+    }
+
+    public void Setup()
+    {
+        inputMap = input.FindActionMap("Tracks");
+
+        inputMap.Enable();
+
+        movementAction = inputMap.FindAction("Movement");
+        lookAction = inputMap.FindAction("CameraLook");
+        setupComplete = true;
+    }
+
+    void SetupAction(ref InputAction action, string actionName, Action<InputAction.CallbackContext> handler)
+    {
+        action = input.FindAction(actionName);
+        if (action != null)
+        {
+            //register handlers
+            action.started += handler;
+            action.performed += handler;
+            action.canceled += handler;
+            setupActionHandlers.Add(action, handler);
+
+            //get binding keys and store in dictionary
+            int bindingIndex = action.GetBindingIndex(InputBinding.MaskByGroup(KB));
+            if (bindingIndex > -1)
+            {
+                string displayString = action.GetBindingDisplayString(bindingIndex).ToUpper();
+                actingBindings.Add(actionName, displayString);
+            }
+        }
+    }
+
+    private void ReadCameraLookInput()
+    {
+        //var vector = cameraLook.ReadValue<UnityEngine.Vector2>();
+        var vector = lookAction.ReadValue<UnityEngine.Vector2>();
+        var pulseWidthX = 500 + (2000 - ((vector.x + 1) * 1000));
+        leftTrackText.text = ((short)pulseWidthX).ToString();
+        if (connected && pulseWidthX != lastPulseWidthX)
+        {
+            lookAngle = vector.x;
+            Debug.Log("Look Angle: " + lookAngle);
+            lastPulseWidthX = pulseWidthX;
+            var cameraLookSignal = new ServoSignal((short)(pulseWidthX), (short)(0));
+            RTCDataChannel.Send(cameraLookSignal.GetBytes());
+        }
+    }
+
+    private void ReadDriveInput()
+    {
+        //var vector = movement.ReadValue<UnityEngine.Vector2>();
+        var vector = movementAction.ReadValue<UnityEngine.Vector2>();
         var radian = Mathf.Atan2(vector.x, vector.y);
         var magnitudeFactor = Mathf.Max( Mathf.Abs(vector.x), Mathf.Abs(vector.y));
-        if((short)(CalculateDriveValue(radian) * magnitudeFactor * 127) > 0)
-            leftTrackText.text = ((short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127)).ToString();
-        if ((short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127) > 0)
-            rightTrackText.text = ((short)(CalculateDriveValue(radian) * magnitudeFactor * 127)).ToString();
+        //if((short)(CalculateDriveValue(radian) * magnitudeFactor * 127) > 0)
+        //    leftTrackText.text = ((short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127)).ToString();
+        //if ((short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127) > 0)
+        //    rightTrackText.text = ((short)(CalculateDriveValue(radian) * magnitudeFactor * 127)).ToString();
         leftTrack = (short)(CalculateDriveValue(radian * -1) * magnitudeFactor * 127);
         rightTrack = (short)(CalculateDriveValue(radian) * magnitudeFactor * 127);
 
-        if (connected)
+        if (connected && (leftTrack != lastLeftTrack || rightTrack != lastRightTrack || lastDriveMessage > 30))
         {
+            lastDriveMessage = 0;
+            lastLeftTrack = leftTrack;
+            lastRightTrack = rightTrack;
             var movementSignal = new MovementSignal((short)(leftTrack + negativeAdjustment), (short)(rightTrack + negativeAdjustment));
             RTCDataChannel.Send(movementSignal.GetBytes());
+        }
+        else
+        {
+            lastDriveMessage++;
         }
     }
 
@@ -72,5 +168,33 @@ public class InputHandler : MonoBehaviour
             vect = -1;
         }
         return vect;
+    }
+
+    public string GetActionBinding(string actionName)
+    {
+        if (actingBindings.TryGetValue(actionName, out string value))
+            return value;
+        else
+        {
+            string lookup = FindActionString(actionName);
+            if (lookup != null)
+            {
+                actingBindings.Add(actionName, lookup);
+                return lookup;
+            }
+            else
+                return null;
+        }
+    }
+
+    string FindActionString(string actionName)
+    {
+        InputAction action = input.FindAction(actionName);
+        int bindingIndex = action.GetBindingIndex(InputBinding.MaskByGroup(KB));
+        if (bindingIndex > -1)
+        {
+            return action.GetBindingDisplayString(bindingIndex).ToUpper();
+        }
+        return null;
     }
 }

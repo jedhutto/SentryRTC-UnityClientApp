@@ -13,18 +13,41 @@ using System.Net;
 using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Drawing;
+using static UnityEngine.EventSystems.EventTrigger;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
+
+//public struct LidarDataCoordinate
+//{
+//    float x;
+//    float y;
+//    bool isEnd;
+//}
+
+//public class LidarDataSignal : Signal
+//{
+//    public LidarDataCoordinate[] LidarData = new LidarDataCoordinate[8192];
+//}
 
 public class WebRTC_Broker : MonoBehaviour
 {
-    #pragma warning disable 0649
+#pragma warning disable 0649
+    [SerializeField] public TMP_Text debug;
     [SerializeField] private Button callButton;
     [SerializeField] private Button disconnectButton;
-    [SerializeField] private Button sendButton;
+    //[SerializeField] private Button sendButton;
     [SerializeField] private TextMeshProUGUI textSend;
     [SerializeField] private RawImage frame;
     [SerializeField] public TMP_InputField textReceive;
     [SerializeField] public Text text;
     [SerializeField] public InputHandler inputHandler;
+    public RawImage graph;
+    public RawImage graphBackground;
+    public Texture2D graphBackgroundTexture;
+    public Texture2D graphTextureTemplate;
+    public Texture2D graphTexture;
+    public float rotationSpeed = 200.0f;
 #pragma warning restore 0649
 
     private RTCPeerConnection caller;
@@ -49,12 +72,12 @@ public class WebRTC_Broker : MonoBehaviour
         WebRTC.Initialize();
         callButton.onClick.AddListener(() => { StartCoroutine(Call()); });
         //sendButton.onClick.AddListener(() => { dataChannel.Send(textSend.text); });
-        message = new MovementSignal(127,127);
-        sendButton.onClick.AddListener(() => 
-        {
-            //var temp = BitConverter.GetBytes(message.id);
-            dataChannel.Send(message.GetBytes()) ; 
-        });
+        //message = new MovementSignal(127,127);
+        //sendButton.onClick.AddListener(() => 
+        //{
+        //    //var temp = BitConverter.GetBytes(message.id);
+        //    dataChannel.Send(message.GetBytes()) ; 
+        //});
         //disconnectButton.onClick.AddListener(() => { Hangup(); });
     }
 
@@ -66,6 +89,14 @@ public class WebRTC_Broker : MonoBehaviour
             bf.Serialize(ms, obj);
             return ms.ToArray();
         }
+    }
+
+    private void Update()
+    {
+        //need to rotate the lidar data to match the tank's camera angle
+        //graph.transform.rotation = Quaternion.Euler(0, 0, inputHandler.lookAngle * 90) ;
+        //graph.transform.rotation = Quaternion.Euler(0, 0, inputHandler.lookAngle * 90) ;
+        graph.transform.rotation = Quaternion.RotateTowards(graph.transform.rotation, Quaternion.Euler(0, 0, inputHandler.lookAngle * 90), rotationSpeed * Time.deltaTime);
     }
 
     private void Start()
@@ -100,26 +131,114 @@ public class WebRTC_Broker : MonoBehaviour
 
         onDataChannelMessage = bytes => 
         {
-            textReceive.text = System.Text.Encoding.UTF8.GetString(bytes);
+            //NativeArray<byte> nativeArray = new NativeArray<byte>(bytes, Allocator.Temp);
+            //NativeArray<LidarDataSignal> floats = nativeArray.Reinterpret<LidarDataSignal>(UnsafeUtility.SizeOf<LidarDataSignal>());
+
+            //move all this logic to LidarHandler.cs and use 
+            var baseColor = new UnityEngine.Color(0, 0, 0, 0.0f);
+            if (graphTextureTemplate == null){
+                graphTextureTemplate = new Texture2D(100, 100);
+                for(int i = 0; i < graphTextureTemplate.width; i++)
+                {
+                    for(int j = 0; j < graphTextureTemplate.height; j++)
+                    {
+                        graphTextureTemplate.SetPixel(i, j, baseColor);
+                    }
+                }
+                //Move this block to a new texture which will be placed behind the transparent lidar texture
+                //This way we won't have to redraw the tank every frame, and it will allow us to
+                //rotate the lidar data to match the tank's camera angle while keeping the tank in the same position
+                graphTexture = new Texture2D(graphTextureTemplate.width, graphTextureTemplate.height);
+                graphBackgroundTexture = new Texture2D(graphTextureTemplate.width, graphTextureTemplate.height);
+                float centerX = graphBackgroundTexture.width / 2;
+                float centerY = graphBackgroundTexture.height / 2;
+                DrawPoint((int)centerX + 2, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 1, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 0, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 1, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
+
+                DrawPoint((int)centerX + 2, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 2, (int)centerY + 1, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 1, (int)centerY + 0, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 2, (int)centerY - 1, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 2, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
+
+                DrawPoint((int)centerX - 2, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY + 1, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 1, (int)centerY + 0, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY - 1, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
+
+                DrawPoint((int)centerX + 2, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 1, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX + 0, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 1, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
+                DrawPoint((int)centerX - 2, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
+
+                graphTexture.SetPixels(graphTextureTemplate.GetPixels());
+
+                graphBackgroundTexture.Apply();
+                graphBackground.texture = graphBackgroundTexture;
+            }
+            else
+            {
+                graphTexture.SetPixels(graphTextureTemplate.GetPixels());
+            }
+            var SignalType = BitConverter.ToUInt16(bytes, 0);
+            var count = 0;
+            
+           
+
+
+            for (int i = 4; i < bytes.Length; i+=4)
+            {
+                count++;
+
+                var x = BitConverter.ToSingle(bytes, i);
+                i += 4;
+                var y = BitConverter.ToSingle(bytes, i);
+                i += 4;
+                var end = BitConverter.ToBoolean(bytes, i);
+
+                float pixelX = ((graphTexture.width / 2) + x * .005f) ;
+                float pixelY = ((graphTexture.height / 2) + y * .005f) ;
+                DrawPoint((int)pixelX, (int)pixelY, UnityEngine.Color.green, graphTexture);
+
+                if (end)
+                {                     
+                    break;
+                }
+            }
+        
+            graphTexture.Apply();
+            graph.texture = graphTexture;
         };
         onDataChannelOpen = () =>
         {
-            sendButton.interactable = true;
+            //sendButton.interactable = true;
             disconnectButton.interactable = true;
-
             inputHandler.RTCDataChannel = dataChannel;
-            inputHandler.connected= true;
-
+            inputHandler.connected = true;
+            inputHandler.Setup();
         };
         onDataChannelClose = () =>
         {
-            sendButton.interactable = false;
+            //sendButton.interactable = false;
             callButton.interactable = true;
             disconnectButton.interactable = false;
 
             inputHandler.connected = false;
             inputHandler.RTCDataChannel = null;
         };
+    }
+
+    void DrawPoint(int x, int y, UnityEngine.Color color, Texture2D texture)
+    {
+        if(x < 0 || x > 100 || y < 0 || y > 100)
+            return;
+
+        texture.SetPixel(x, y, color);
     }
 
     void onMessage()
@@ -151,7 +270,12 @@ public class WebRTC_Broker : MonoBehaviour
             Debug.Log(trackEvent);
             if (trackEvent.Track.Kind == TrackKind.Video)
             {
-                var codecs = RTCRtpSender.GetCapabilities(TrackKind.Video).codecs;
+                var codecs = RTCRtpReceiver.GetCapabilities(TrackKind.Video).codecs;
+                debug.text = "";
+                foreach (var codec in codecs)
+                {
+                    debug.text += codec.mimeType + '\n';
+                }
                 var h264Codecs = codecs.Where(codec => codec.mimeType == "video/H264");
                 var error = trackEvent.Transceiver.SetCodecPreferences(h264Codecs.ToArray());
                 
@@ -184,7 +308,7 @@ public class WebRTC_Broker : MonoBehaviour
         var op = caller.SetLocalDescription(ref desc);
         yield return op;
 
-        CoroutineWithData cd = new CoroutineWithData(this, tableStorageRequestHandler.sendRequest(TableStorageRequestHandler.Verb.PUT, new TableEntry("caller", desc.sdp, "", "calling")).GetEnumerator());
+        CoroutineWithData cd = new CoroutineWithData(this, tableStorageRequestHandler.SendRequest(TableStorageRequestHandler.Verb.PUT, new TableEntry("caller", desc.sdp, "", "calling")).GetEnumerator());
         yield return cd.coroutine;
         (TableEntry, int) putResponse = ((TableEntry, int))cd.result;
 
@@ -193,13 +317,13 @@ public class WebRTC_Broker : MonoBehaviour
             bool waitingForResponse = true;
             while (waitingForResponse)
             {
-                cd = new CoroutineWithData(this, tableStorageRequestHandler.sendRequest(TableStorageRequestHandler.Verb.GET, new TableEntry("answerer")).GetEnumerator());
+                cd = new CoroutineWithData(this, tableStorageRequestHandler.SendRequest(TableStorageRequestHandler.Verb.GET, new TableEntry("answerer")).GetEnumerator());
                 yield return cd.coroutine;
                 (TableEntry, int) getResponse = ((TableEntry, int))cd.result;
                 if (getResponse.Item2 != 404 && getResponse.Item1?.status == "answering")
                 {
                     //change state in table storage
-                    cd = new CoroutineWithData(this, tableStorageRequestHandler.sendRequest(TableStorageRequestHandler.Verb.PUT, new TableEntry("caller", desc.sdp, candidateList, "connected")).GetEnumerator());
+                    cd = new CoroutineWithData(this, tableStorageRequestHandler.SendRequest(TableStorageRequestHandler.Verb.PUT, new TableEntry("caller", desc.sdp, candidateList, "connected")).GetEnumerator());
                     yield return cd.coroutine;
                     putResponse = ((TableEntry, int))cd.result;
 
@@ -315,7 +439,7 @@ public class WebRTC_Broker : MonoBehaviour
             candidateResponse.candidate = candidateList;
             candidateResponse.description = testDesc.sdp;
             candidateResponse.status = "calling";
-            yield return cd = new CoroutineWithData(this, tableStorageRequestHandler.sendRequest(TableStorageRequestHandler.Verb.PUT, candidateResponse).GetEnumerator());
+            yield return cd = new CoroutineWithData(this, tableStorageRequestHandler.SendRequest(TableStorageRequestHandler.Verb.PUT, candidateResponse).GetEnumerator());
             yield return cd.coroutine;
             (TableEntry, int) putResponse = ((TableEntry, int))cd.result;
         }

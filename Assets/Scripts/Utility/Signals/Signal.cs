@@ -9,6 +9,8 @@ public class Signal
         Interact = 2,
         MovementConfig = 3,
         CameraConfig = 4,
-        Message = 5
+        Message = 5,
+        CameraLook = 6,
+        LidarDataArray = 7,
     }
-}
+} 

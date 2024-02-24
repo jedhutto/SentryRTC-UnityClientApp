@@ -13,7 +13,7 @@ public class CoroutineWithData
     }
 
     private IEnumerator Run()
-    {
+    { 
         while (target.MoveNext())
         {
             result = target.Current;
