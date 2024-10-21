@@ -23,6 +23,13 @@ public class InputHandler : MonoBehaviour
     public RTCDataChannel RTCDataChannel;
     public bool connected = false;
     public float lookAngle = 0;
+    public int selectedServo = 1;
+    public short[] currentServoValues = { 1500,1250,1250,1250,1250};
+    public float[] armSegmentLength = { 49,49,20};
+    public float[] armSegmentAngleRange = { 90f,90f,90f};
+    public float[] armSegmentAngleOffset = { 0f,0f,-90f};
+    public short[] pulseWidthMaxDeltaValues = { 10,15,20,20,20};
+    public short[] servoDirectionCorrection = { -1,1,-1,1,1};
     //private InputAction movement;
     //private InputAction cameraLook;
     private short negativeAdjustment = 127;
@@ -33,6 +40,8 @@ public class InputHandler : MonoBehaviour
 
     InputAction movementAction;
     InputAction lookAction;
+    InputAction servoSelectUpAction;
+    InputAction servoSelectDownAction;
     InputActionMap inputMap;
 
     static readonly string KB = "Keyboard And Mouse";
@@ -43,20 +52,21 @@ public class InputHandler : MonoBehaviour
     bool setupComplete = false;
     void Start()
     {
-        
+        InvokeRepeating(nameof(ReadDriveInput), 0, 1.0f / 60.0f);
+        InvokeRepeating(nameof(ReadServoInput), 0, 1.0f / 60.0f);
 
         //InvokeRepeating("ReadDriveInput", 0, 1.0f/60.0f);
         //InvokeRepeating("ReadCameraLookInput", 0, 1.0f/60.0f);
     }
 
-    void Update()
-    {
-        if (setupComplete)
-        {
-            ReadDriveInput();
-            ReadCameraLookInput();
-        }
-    }
+    //void Update()
+    //{
+    //    if (setupComplete)
+    //    {
+    //        ReadDriveInput();
+    //        ReadServoInput();
+    //    }
+    //}
 
     void OnDestroy()
     {
@@ -78,6 +88,12 @@ public class InputHandler : MonoBehaviour
 
         movementAction = inputMap.FindAction("Movement");
         lookAction = inputMap.FindAction("CameraLook");
+        servoSelectUpAction = inputMap.FindAction("ServoSelectUp");
+        servoSelectDownAction = inputMap.FindAction("ServoSelectDown");
+
+        SetupAction(ref servoSelectUpAction, "ServoSelectUp", OnServoSelectUp);
+        SetupAction(ref servoSelectDownAction, "ServoSelectDown", OnServoSelectDown);
+
         setupComplete = true;
     }
 
@@ -87,9 +103,7 @@ public class InputHandler : MonoBehaviour
         if (action != null)
         {
             //register handlers
-            action.started += handler;
             action.performed += handler;
-            action.canceled += handler;
             setupActionHandlers.Add(action, handler);
 
             //get binding keys and store in dictionary
@@ -102,24 +116,93 @@ public class InputHandler : MonoBehaviour
         }
     }
 
+    private void OnServoSelectUp(InputAction.CallbackContext context)
+    {
+        if (selectedServo < 4)
+        {
+            selectedServo++;
+            Debug.Log("Selected Servo: " + selectedServo);
+        }
+    }
+
+    private void OnServoSelectDown(InputAction.CallbackContext context)
+    {
+        if (selectedServo > 1 )
+        {
+            selectedServo--;
+            Debug.Log("Selected Servo: " + selectedServo);
+        }
+    }
+
+    private void ReadServoInput()
+    {
+        if (!setupComplete) return;
+        var vector = lookAction.ReadValue<UnityEngine.Vector2>();
+        short xPulseWidthDelta = (short)((vector.x * servoDirectionCorrection[0]) * pulseWidthMaxDeltaValues[0]);
+        short yPulseWidthDelta = (short)((vector.y * servoDirectionCorrection[selectedServo]) * pulseWidthMaxDeltaValues[selectedServo]);
+        if (connected && (xPulseWidthDelta != 0 || yPulseWidthDelta != 0))
+        {
+            //slewing servo
+            if (xPulseWidthDelta < 0 && currentServoValues[0] > 500)
+            {
+                currentServoValues[0] += xPulseWidthDelta;
+                if (currentServoValues[0] < 500)
+                    currentServoValues[0] = 500;
+            }
+            else if (xPulseWidthDelta > 0 && currentServoValues[0] < 2500)
+            {
+                currentServoValues[0] += xPulseWidthDelta;
+                if (currentServoValues[0] > 2500)
+                    currentServoValues[0] = 2500;
+            }
+
+            lookAngle = (currentServoValues[0] - 1500) / 1000.0f;
+
+            //arm servos
+            if (yPulseWidthDelta < 0 && currentServoValues[selectedServo] > 500)
+            {
+                currentServoValues[selectedServo] += yPulseWidthDelta;
+                if (currentServoValues[selectedServo] < 500)
+                    currentServoValues[selectedServo] = 500;
+            }
+            else if (yPulseWidthDelta > 0 && currentServoValues[selectedServo] < 2500)
+            {
+                currentServoValues[selectedServo] += yPulseWidthDelta;
+                if (currentServoValues[selectedServo] > 2500)
+                    currentServoValues[selectedServo] = 2500;
+            }
+
+
+
+
+            var servoSignal = new ServoSignal(currentServoValues);
+            RTCDataChannel.Send(servoSignal.GetBytes());
+            Debug.Log("y: " + vector.y);
+            Debug.Log("x: " + vector.x);
+            Debug.Log(currentServoValues[0] + " - " + currentServoValues[1] + " - " + currentServoValues[2] + " - " + currentServoValues[3] + " - " + currentServoValues[4]);
+            Debug.Log("");
+        }
+    }
+
     private void ReadCameraLookInput()
     {
         //var vector = cameraLook.ReadValue<UnityEngine.Vector2>();
         var vector = lookAction.ReadValue<UnityEngine.Vector2>();
-        var pulseWidthX = 500 + (2000 - ((vector.x + 1) * 1000));
-        leftTrackText.text = ((short)pulseWidthX).ToString();
-        if (connected && pulseWidthX != lastPulseWidthX)
+        var pulseWidth0 = 500 + (2000 - ((vector.x + 1) * 1000));
+        leftTrackText.text = ((short)pulseWidth0).ToString();
+        if (connected && pulseWidth0 != lastPulseWidthX)
         {
             lookAngle = vector.x;
             Debug.Log("Look Angle: " + lookAngle);
-            lastPulseWidthX = pulseWidthX;
-            var cameraLookSignal = new ServoSignal((short)(pulseWidthX), (short)(0));
+            lastPulseWidthX = pulseWidth0;
+            var cameraLookSignal = new ServoSignal((short)pulseWidth0, 1250, 1250, 1250, 1250);
             RTCDataChannel.Send(cameraLookSignal.GetBytes());
         }
     }
 
     private void ReadDriveInput()
     {
+        if (!setupComplete) return;
         //var vector = movement.ReadValue<UnityEngine.Vector2>();
         var vector = movementAction.ReadValue<UnityEngine.Vector2>();
         var radian = Mathf.Atan2(vector.x, vector.y);

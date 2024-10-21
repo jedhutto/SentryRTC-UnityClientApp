@@ -17,6 +17,7 @@ using System.Drawing;
 using static UnityEngine.EventSystems.EventTrigger;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Color = UnityEngine.Color;
 
 //public struct LidarDataCoordinate
 //{
@@ -48,6 +49,11 @@ public class WebRTC_Broker : MonoBehaviour
     public Texture2D graphTextureTemplate;
     public Texture2D graphTexture;
     public float rotationSpeed = 200.0f;
+    public Texture2D armTexture; 
+    public Texture2D armTextureBackground; 
+    public Texture2D armImageTemplate;
+    public RawImage armImage;
+    public RawImage armImageBackground;
 #pragma warning restore 0649
 
     private RTCPeerConnection caller;
@@ -61,6 +67,7 @@ public class WebRTC_Broker : MonoBehaviour
     private DelegateOnDataChannel onDataChannel;
     private VideoStreamTrack videoStreamTrack;
     private TableStorageRequestHandler tableStorageRequestHandler;
+    private LidarHandler lidarHandler;
     private DelegateOnTrack onTrack;
     private List<RTCIceCandidate> rtcIceCandidates;
     private RTCSessionDescription testDesc;
@@ -78,7 +85,7 @@ public class WebRTC_Broker : MonoBehaviour
         //    //var temp = BitConverter.GetBytes(message.id);
         //    dataChannel.Send(message.GetBytes()) ; 
         //});
-        //disconnectButton.onClick.AddListener(() => { Hangup(); });
+        disconnectButton.onClick.AddListener(() => { Disconnect(); });
     }
 
     public static byte[] ObjectToByteArray(Signal obj)
@@ -93,10 +100,9 @@ public class WebRTC_Broker : MonoBehaviour
 
     private void Update()
     {
-        //need to rotate the lidar data to match the tank's camera angle
-        //graph.transform.rotation = Quaternion.Euler(0, 0, inputHandler.lookAngle * 90) ;
-        //graph.transform.rotation = Quaternion.Euler(0, 0, inputHandler.lookAngle * 90) ;
         graph.transform.rotation = Quaternion.RotateTowards(graph.transform.rotation, Quaternion.Euler(0, 0, inputHandler.lookAngle * 90), rotationSpeed * Time.deltaTime);
+
+        drawArmPosition();
     }
 
     private void Start()
@@ -118,11 +124,11 @@ public class WebRTC_Broker : MonoBehaviour
                     Debug.Log("Video Received");
                     frame.texture = tex;
                 };
-                
             }
         };
         rtcIceCandidates = new List<RTCIceCandidate>();
         tableStorageRequestHandler = gameObject.AddComponent<TableStorageRequestHandler>();
+        lidarHandler = GetComponent<LidarHandler>();
         callButton.interactable = true;
         disconnectButton.interactable = false;
 
@@ -131,88 +137,8 @@ public class WebRTC_Broker : MonoBehaviour
 
         onDataChannelMessage = bytes => 
         {
-            //NativeArray<byte> nativeArray = new NativeArray<byte>(bytes, Allocator.Temp);
-            //NativeArray<LidarDataSignal> floats = nativeArray.Reinterpret<LidarDataSignal>(UnsafeUtility.SizeOf<LidarDataSignal>());
-
-            //move all this logic to LidarHandler.cs and use 
-            var baseColor = new UnityEngine.Color(0, 0, 0, 0.0f);
-            if (graphTextureTemplate == null){
-                graphTextureTemplate = new Texture2D(100, 100);
-                for(int i = 0; i < graphTextureTemplate.width; i++)
-                {
-                    for(int j = 0; j < graphTextureTemplate.height; j++)
-                    {
-                        graphTextureTemplate.SetPixel(i, j, baseColor);
-                    }
-                }
-                //Move this block to a new texture which will be placed behind the transparent lidar texture
-                //This way we won't have to redraw the tank every frame, and it will allow us to
-                //rotate the lidar data to match the tank's camera angle while keeping the tank in the same position
-                graphTexture = new Texture2D(graphTextureTemplate.width, graphTextureTemplate.height);
-                graphBackgroundTexture = new Texture2D(graphTextureTemplate.width, graphTextureTemplate.height);
-                float centerX = graphBackgroundTexture.width / 2;
-                float centerY = graphBackgroundTexture.height / 2;
-                DrawPoint((int)centerX + 2, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX + 1, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX + 0, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX - 1, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX - 2, (int)centerY + 3, UnityEngine.Color.red, graphTextureTemplate);
-
-                DrawPoint((int)centerX + 2, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX + 2, (int)centerY + 1, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX + 1, (int)centerY + 0, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX + 2, (int)centerY - 1, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX + 2, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
-
-                DrawPoint((int)centerX - 2, (int)centerY + 2, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX - 2, (int)centerY + 1, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX - 1, (int)centerY + 0, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX - 2, (int)centerY - 1, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX - 2, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
-
-                DrawPoint((int)centerX + 2, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX + 1, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX + 0, (int)centerY - 2, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX - 1, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
-                DrawPoint((int)centerX - 2, (int)centerY - 3, UnityEngine.Color.red, graphTextureTemplate);
-
-                graphTexture.SetPixels(graphTextureTemplate.GetPixels());
-
-                graphBackgroundTexture.Apply();
-                graphBackground.texture = graphBackgroundTexture;
-            }
-            else
-            {
-                graphTexture.SetPixels(graphTextureTemplate.GetPixels());
-            }
-            var SignalType = BitConverter.ToUInt16(bytes, 0);
-            var count = 0;
-            
-           
-
-
-            for (int i = 4; i < bytes.Length; i+=4)
-            {
-                count++;
-
-                var x = BitConverter.ToSingle(bytes, i);
-                i += 4;
-                var y = BitConverter.ToSingle(bytes, i);
-                i += 4;
-                var end = BitConverter.ToBoolean(bytes, i);
-
-                float pixelX = ((graphTexture.width / 2) + x * .005f) ;
-                float pixelY = ((graphTexture.height / 2) + y * .005f) ;
-                DrawPoint((int)pixelX, (int)pixelY, UnityEngine.Color.green, graphTexture);
-
-                if (end)
-                {                     
-                    break;
-                }
-            }
-        
-            graphTexture.Apply();
-            graph.texture = graphTexture;
+            //Calls lidar handler to copy the data to stage it for drawing
+            lidarHandler.SetLidarData(bytes);
         };
         onDataChannelOpen = () =>
         {
@@ -233,13 +159,140 @@ public class WebRTC_Broker : MonoBehaviour
         };
     }
 
-    void DrawPoint(int x, int y, UnityEngine.Color color, Texture2D texture)
+    // drawArmPosition method is called in Update() to draw the arm position based on the inputHandler's lookAngle for currentServoValues[1], currentServoValues[2], and currentServoValues[3].
+    // uses armSegmentLength to determine the length of each segment of the arm. Uses 0,1,2 Index
+    // uses armSegmentAngleRange to determine the range of angles that each segment can rotate within. Uses 0,1,2 Index
+    // uses armSegmentAngleOffset to determine the offset of the angle of each segment. Uses 0,1,2 Index
+    // uses servoDirectionCorrection to determine the direction of the servo rotation. Uses index 1,2,3.
+    private void drawArmPosition()
     {
-        if(x < 0 || x > 100 || y < 0 || y > 100)
-            return;
+        var baseColor = new Color32(0, 0, 0, 0);
+        if (armImageTemplate == null)
+        {
+            armImageTemplate = new Texture2D(300, 300);
+            for (int i = 0; i < armImageTemplate.width; i++)
+            {
+                for (int j = 0; j < armImageTemplate.height; j++)
+                {
+                    armImageTemplate.SetPixel(i, j, baseColor);
+                }
+            }
 
-        texture.SetPixel(x, y, color);
+            armTexture = new Texture2D(armImageTemplate.width, armImageTemplate.height);
+            armTextureBackground = new Texture2D(armImageTemplate.width, armImageTemplate.height);
+        }
+
+        // Ensure inputHandler is set
+        if (inputHandler == null) return;
+
+        // Get the servo angles
+        float baseAngle = inputHandler.currentServoValues[1];
+        float midAngle = inputHandler.currentServoValues[2];
+        float endAngle = inputHandler.currentServoValues[3];
+
+        // Convert pulse width to angles within the specified range
+        baseAngle = Mathf.Lerp(0, inputHandler.armSegmentAngleRange[0], (baseAngle - 500) / 2000.0f) 
+            + inputHandler.armSegmentAngleOffset[0];
+        midAngle =(Mathf.Lerp(0, inputHandler.armSegmentAngleRange[1], (midAngle - 500) / 2000.0f) 
+            + inputHandler.armSegmentAngleOffset[0] 
+            + inputHandler.armSegmentAngleOffset[1])*-1;
+        endAngle = (Mathf.Lerp(0, inputHandler.armSegmentAngleRange[2], (endAngle - 500) / 2000.0f) 
+            + inputHandler.armSegmentAngleOffset[0] 
+            + inputHandler.armSegmentAngleOffset[1] 
+            + inputHandler.armSegmentAngleOffset[2])*1;
+
+        // Calculate the positions of each segment
+        Vector2 basePosition = new Vector2(armTexture.width / 2, armTexture.height / 2);
+        Vector2 midPosition = basePosition + new Vector2(
+            inputHandler.armSegmentLength[0] * Mathf.Cos(baseAngle * Mathf.Deg2Rad),
+            inputHandler.armSegmentLength[0] * Mathf.Sin(baseAngle * Mathf.Deg2Rad)
+        );
+        Vector2 endPosition = midPosition + new Vector2(
+            inputHandler.armSegmentLength[1] * Mathf.Cos((baseAngle + midAngle) * Mathf.Deg2Rad),
+            inputHandler.armSegmentLength[1] * Mathf.Sin((baseAngle + midAngle) * Mathf.Deg2Rad)
+        );
+        Vector2 tipPosition = endPosition + new Vector2(
+            inputHandler.armSegmentLength[2] * Mathf.Cos((baseAngle + midAngle + endAngle) * Mathf.Deg2Rad),
+            inputHandler.armSegmentLength[2] * Mathf.Sin((baseAngle + midAngle + endAngle) * Mathf.Deg2Rad)
+        );
+
+        // Clear the texture
+        Color32[] resetColorArray = armTexture.GetPixels32();
+        for (int i = 0; i < resetColorArray.Length; i++)
+        {
+            resetColorArray[i] = new Color(0, 0, 0, 0); // Transparent
+        }
+        armTexture.SetPixels32(resetColorArray);
+
+        // Draw the arm segments
+        DrawLine(basePosition - new Vector2(-25,0), basePosition - new Vector2(25, 0), Color.blue, 10);
+        DrawLine(basePosition, midPosition, inputHandler.selectedServo == 1 ? Color.green : Color.red, 10);
+        DrawLine(midPosition, endPosition, inputHandler.selectedServo == 2 ? Color.green : Color.red, 10);
+        DrawLine(endPosition, tipPosition, inputHandler.selectedServo == 3 ? Color.green : Color.red, 10);
+
+        // Apply the changes to the texture
+        armTexture.Apply();
+        armTextureBackground.Apply();
+        armImageBackground.texture = armTextureBackground;
+        // Update the RawImage component
+        armImage.texture = armTexture;
     }
+
+
+    private void DrawLine(Vector2 start, Vector2 end, Color color, int lineWidth)
+    {
+        int x0 = (int)start.x;
+        int y0 = (int)start.y;
+        int x1 = (int)end.x;
+        int y1 = (int)end.y;
+
+        int dx = Mathf.Abs(x1 - x0);
+        int dy = Mathf.Abs(y1 - y0);
+        int sx = x0 < x1 ? 1 : -1;
+        int sy = y0 < y1 ? 1 : -1;
+        int err = dx - dy;
+
+        while (true)
+        {
+            DrawThickPixel(x0, y0, color, lineWidth);
+
+            if (x0 == x1 && y0 == y1) break;
+            int e2 = 2 * err;
+            if (e2 > -dy)
+            {
+                err -= dy;
+                x0 += sx;
+            }
+            if (e2 < dx)
+            {
+                err += dx;
+                y0 += sy;
+            }
+        }
+    }
+
+    private void DrawThickPixel(int x, int y, Color color, int lineWidth)
+    {
+        int halfWidth = lineWidth / 2;
+        for (int i = -halfWidth; i <= halfWidth; i++)
+        {
+            for (int j = -halfWidth; j <= halfWidth; j++)
+            {
+                int drawX = x + i;
+                int drawY = y + j;
+                if (drawX >= 0 && drawX < armTexture.width && drawY >= 0 && drawY < armTexture.height)
+                {
+                    armTexture.SetPixel(drawX, drawY, color);
+                }
+            }
+        }
+    }
+
+    void Disconnect()
+    {
+        dataChannel.Close();
+    }
+
 
     void onMessage()
     {
@@ -276,7 +329,7 @@ public class WebRTC_Broker : MonoBehaviour
                 {
                     debug.text += codec.mimeType + '\n';
                 }
-                var h264Codecs = codecs.Where(codec => codec.mimeType == "video/H264");
+                var h264Codecs = codecs.Where(codec => codec.mimeType == "video/VP8");
                 var error = trackEvent.Transceiver.SetCodecPreferences(h264Codecs.ToArray());
                 
                 if (error != RTCErrorType.None)

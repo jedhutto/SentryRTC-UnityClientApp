@@ -62,6 +62,24 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": true
+                },
+                {
+                    ""name"": ""ServoSelectUp"",
+                    ""type"": ""Button"",
+                    ""id"": ""bc7a7cd9-869c-4378-bf72-9fd362937921"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ServoSelectDown"",
+                    ""type"": ""Button"",
+                    ""id"": ""3991d69d-fedf-4835-8724-6540b6e7406b"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -108,14 +126,30 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
                     ""action"": ""CameraLook"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b13a9fb4-2f08-427e-8d72-f503800b7206"",
+                    ""path"": ""<Gamepad>/dpad/up"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Xbox Control Scheme"",
+                    ""action"": ""ServoSelectUp"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""66b0f438-30a6-463e-9243-09cbab7aaf2f"",
+                    ""path"": ""<Gamepad>/dpad/down"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Xbox Control Scheme"",
+                    ""action"": ""ServoSelectDown"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
-        },
-        {
-            ""name"": ""CameraLook"",
-            ""id"": ""9f8cf958-6e3e-40f0-94b5-c981d936b18f"",
-            ""actions"": [],
-            ""bindings"": []
         }
     ],
     ""controlSchemes"": [
@@ -138,8 +172,8 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
         m_Tracks_Call = m_Tracks.FindAction("Call", throwIfNotFound: true);
         m_Tracks_HangUp = m_Tracks.FindAction("HangUp", throwIfNotFound: true);
         m_Tracks_CameraLook = m_Tracks.FindAction("CameraLook", throwIfNotFound: true);
-        // CameraLook
-        m_CameraLook = asset.FindActionMap("CameraLook", throwIfNotFound: true);
+        m_Tracks_ServoSelectUp = m_Tracks.FindAction("ServoSelectUp", throwIfNotFound: true);
+        m_Tracks_ServoSelectDown = m_Tracks.FindAction("ServoSelectDown", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -205,6 +239,8 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
     private readonly InputAction m_Tracks_Call;
     private readonly InputAction m_Tracks_HangUp;
     private readonly InputAction m_Tracks_CameraLook;
+    private readonly InputAction m_Tracks_ServoSelectUp;
+    private readonly InputAction m_Tracks_ServoSelectDown;
     public struct TracksActions
     {
         private @InputMaster m_Wrapper;
@@ -213,6 +249,8 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
         public InputAction @Call => m_Wrapper.m_Tracks_Call;
         public InputAction @HangUp => m_Wrapper.m_Tracks_HangUp;
         public InputAction @CameraLook => m_Wrapper.m_Tracks_CameraLook;
+        public InputAction @ServoSelectUp => m_Wrapper.m_Tracks_ServoSelectUp;
+        public InputAction @ServoSelectDown => m_Wrapper.m_Tracks_ServoSelectDown;
         public InputActionMap Get() { return m_Wrapper.m_Tracks; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -234,6 +272,12 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
             @CameraLook.started += instance.OnCameraLook;
             @CameraLook.performed += instance.OnCameraLook;
             @CameraLook.canceled += instance.OnCameraLook;
+            @ServoSelectUp.started += instance.OnServoSelectUp;
+            @ServoSelectUp.performed += instance.OnServoSelectUp;
+            @ServoSelectUp.canceled += instance.OnServoSelectUp;
+            @ServoSelectDown.started += instance.OnServoSelectDown;
+            @ServoSelectDown.performed += instance.OnServoSelectDown;
+            @ServoSelectDown.canceled += instance.OnServoSelectDown;
         }
 
         private void UnregisterCallbacks(ITracksActions instance)
@@ -250,6 +294,12 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
             @CameraLook.started -= instance.OnCameraLook;
             @CameraLook.performed -= instance.OnCameraLook;
             @CameraLook.canceled -= instance.OnCameraLook;
+            @ServoSelectUp.started -= instance.OnServoSelectUp;
+            @ServoSelectUp.performed -= instance.OnServoSelectUp;
+            @ServoSelectUp.canceled -= instance.OnServoSelectUp;
+            @ServoSelectDown.started -= instance.OnServoSelectDown;
+            @ServoSelectDown.performed -= instance.OnServoSelectDown;
+            @ServoSelectDown.canceled -= instance.OnServoSelectDown;
         }
 
         public void RemoveCallbacks(ITracksActions instance)
@@ -267,44 +317,6 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
         }
     }
     public TracksActions @Tracks => new TracksActions(this);
-
-    // CameraLook
-    private readonly InputActionMap m_CameraLook;
-    private List<ICameraLookActions> m_CameraLookActionsCallbackInterfaces = new List<ICameraLookActions>();
-    public struct CameraLookActions
-    {
-        private @InputMaster m_Wrapper;
-        public CameraLookActions(@InputMaster wrapper) { m_Wrapper = wrapper; }
-        public InputActionMap Get() { return m_Wrapper.m_CameraLook; }
-        public void Enable() { Get().Enable(); }
-        public void Disable() { Get().Disable(); }
-        public bool enabled => Get().enabled;
-        public static implicit operator InputActionMap(CameraLookActions set) { return set.Get(); }
-        public void AddCallbacks(ICameraLookActions instance)
-        {
-            if (instance == null || m_Wrapper.m_CameraLookActionsCallbackInterfaces.Contains(instance)) return;
-            m_Wrapper.m_CameraLookActionsCallbackInterfaces.Add(instance);
-        }
-
-        private void UnregisterCallbacks(ICameraLookActions instance)
-        {
-        }
-
-        public void RemoveCallbacks(ICameraLookActions instance)
-        {
-            if (m_Wrapper.m_CameraLookActionsCallbackInterfaces.Remove(instance))
-                UnregisterCallbacks(instance);
-        }
-
-        public void SetCallbacks(ICameraLookActions instance)
-        {
-            foreach (var item in m_Wrapper.m_CameraLookActionsCallbackInterfaces)
-                UnregisterCallbacks(item);
-            m_Wrapper.m_CameraLookActionsCallbackInterfaces.Clear();
-            AddCallbacks(instance);
-        }
-    }
-    public CameraLookActions @CameraLook => new CameraLookActions(this);
     private int m_XboxControlSchemeSchemeIndex = -1;
     public InputControlScheme XboxControlSchemeScheme
     {
@@ -320,8 +332,7 @@ public partial class @InputMaster: IInputActionCollection2, IDisposable
         void OnCall(InputAction.CallbackContext context);
         void OnHangUp(InputAction.CallbackContext context);
         void OnCameraLook(InputAction.CallbackContext context);
-    }
-    public interface ICameraLookActions
-    {
+        void OnServoSelectUp(InputAction.CallbackContext context);
+        void OnServoSelectDown(InputAction.CallbackContext context);
     }
 }

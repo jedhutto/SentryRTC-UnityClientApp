@@ -40,6 +40,24 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": true
+                },
+                {
+                    "name": "ServoSelectUp",
+                    "type": "Button",
+                    "id": "bc7a7cd9-869c-4378-bf72-9fd362937921",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ServoSelectDown",
+                    "type": "Button",
+                    "id": "3991d69d-fedf-4835-8724-6540b6e7406b",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -86,14 +104,30 @@
                     "action": "CameraLook",
                     "isComposite": false,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b13a9fb4-2f08-427e-8d72-f503800b7206",
+                    "path": "<Gamepad>/dpad/up",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Xbox Control Scheme",
+                    "action": "ServoSelectUp",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "66b0f438-30a6-463e-9243-09cbab7aaf2f",
+                    "path": "<Gamepad>/dpad/down",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Xbox Control Scheme",
+                    "action": "ServoSelectDown",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
-        },
-        {
-            "name": "CameraLook",
-            "id": "9f8cf958-6e3e-40f0-94b5-c981d936b18f",
-            "actions": [],
-            "bindings": []
         }
     ],
     "controlSchemes": [
