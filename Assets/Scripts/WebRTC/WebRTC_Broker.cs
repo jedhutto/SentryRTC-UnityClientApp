@@ -100,7 +100,8 @@ public class WebRTC_Broker : MonoBehaviour
 
     private void Update()
     {
-        graph.transform.rotation = Quaternion.RotateTowards(graph.transform.rotation, Quaternion.Euler(0, 0, inputHandler.lookAngle * 90), rotationSpeed * Time.deltaTime);
+        graph.transform.rotation = Quaternion.RotateTowards(graph.transform.rotation, Quaternion.Euler(0, 0, -inputHandler.lookAngle * 90), rotationSpeed * Time.deltaTime);
+
 
         drawArmPosition();
     }
